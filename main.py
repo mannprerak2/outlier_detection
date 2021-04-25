@@ -38,20 +38,29 @@ class Node:
     A Node is a cluster.
     '''
 
-    def __init__(self, sampleIndexes=[]):
+    def __init__(self, sampleIndexes=[], verifyCenters=False, centroidSeeds=[]):
         # Indices of all samples under this cluster.
         self.sampleNumbers = []
         self.sampleNumbers.extend(sampleIndexes)
-
-        # Randomly chosen cluster centers.
-        self.centroidSeeds = []
+        self.verifyCenters = verifyCenters
+        self.centroidSeeds = centroidSeeds
 
     def addSample(self, sample):
         self.sampleNumbers.append(sample)
 
+    def __update_dist_and_edge_knn(self, i, j, distance, dist_knn, edge_knn):
+        # For i.
+        if dist_knn[i].getMax() > distance.distance(i, j):
+            dist_knn[i].setMax(distance.distance(i, j))
+            edge_knn[i] = dist_knn[i].average()
+        # For j.
+        if dist_knn[j].getMax() > distance.distance(i, j):
+            dist_knn[j].setMax(distance.distance(i, j))
+            edge_knn[j] = dist_knn[j].average()
+
     def DHCA(self, dist_knn, edge_knn, kNN, nodeArray,
              k, maxClusterSize, threshold,
-             distance: distance.Distance) -> None:
+             distance: distance.Distance, verifiedStatus) -> None:
         '''
         Input:
         - dist_knn: sorted distances of kNN for each data item.
@@ -67,8 +76,10 @@ class Node:
         - New nodes generated (<=k) and pushed to nodeArray (inplace).
         '''
 
-        # Randomly select k elements from sampleNumbers
-        self.centroidSeeds = random.sample(population=self.sampleNumbers, k=k)
+        if len(self.centroidSeeds) < 1:
+            # Randomly select k elements from sampleNumbers
+            self.centroidSeeds = random.sample(
+                population=self.sampleNumbers, k=k)
 
         # Generate k new nodes and map them with the index.
         nodeMap = {}
@@ -83,13 +94,22 @@ class Node:
             # Get nearest center.
             j = distance.closest(i, self.centroidSeeds)
 
-            if dist_knn[i].getMax() > distance.distance(i, j):
-                dist_knn[i].setMax(distance.distance(i, j))
-                # Using average distance as value of db outlier scores.
-                edge_knn[i] = dist_knn[i].average()
+            self.__update_dist_and_edge_knn(
+                i, j, distance=distance, dist_knn=dist_knn, edge_knn=edge_knn)
 
             if dist_knn[i].average() > threshold:
                 nodeMap[j].addSample(i)
+
+        if self.verifyCenters:
+            for c1 in range(0, len(self.centroidSeeds)):
+                # Skip this if center is already verified.
+                if verifiedStatus[self.centroidSeeds[c1]]:
+                    continue
+                for c2 in range(c1+1, len(self.centroidSeeds)):
+                    self.__update_dist_and_edge_knn(
+                        self.centroidSeeds[c1], self.centroidSeeds[c2],
+                        distance=distance, dist_knn=dist_knn, edge_knn=edge_knn)
+                verifiedStatus[self.centroidSeeds[c1]] = True
 
         for v in nodeMap.values():
             if len(v.sampleNumbers) > maxClusterSize:
@@ -126,6 +146,23 @@ def getThreshold(edge_knn):
     return mean(edge_knn)+stdev(edge_knn)
 
 
+def areTopNVerified(n, db_outlier_indexes, verifiedStatus):
+    for i in db_outlier_indexes[:n]:
+        if not verifiedStatus[i]:
+            return False
+    return True
+
+
+def getTopKUnverified(k, db_outlier_indexes, verifiedStatus):
+    ans = []
+    for i in db_outlier_indexes:
+        if not verifiedStatus[i]:
+            ans.append(i)
+            if len(ans) >= k:
+                break
+    return ans
+
+
 def main():
     mp = readHumanGeneData()
 
@@ -134,6 +171,9 @@ def main():
     size = len(labels)
 
     sampleIndexes = list(range(0, size))
+
+    # Array of verification status of all data items. True if verified.
+    verifiedStatus = [False]*size
 
     kNN = 3
     k = 3
@@ -168,19 +208,23 @@ def main():
     # Number of outliers to find.
     n = 3
 
-    for i in range(5):
-        print(db_outlier_indexes[:n])
-        # Created with single cluster of all elements.
-        nodeArray = [Node(sampleIndexes=sampleIndexes)]
+    while not areTopNVerified(n, db_outlier_indexes, verifiedStatus):
+        topKUnverified = getTopKUnverified(
+            k, db_outlier_indexes, verifiedStatus)
+
+        nodeArray = [Node(sampleIndexes=sampleIndexes,
+                          centroidSeeds=topKUnverified, verifyCenters=True)]
+
         threshold = getThreshold(edge_knn)
+
         for node in nodeArray:
             node.DHCA(dist_knn=dist_knn, edge_knn=edge_knn,
-                    kNN=kNN, nodeArray=nodeArray, k=k, maxClusterSize=maxClusterSize,
-                    distance=distanceFinder, threshold=threshold)
+                      kNN=kNN, nodeArray=nodeArray, k=k, maxClusterSize=maxClusterSize,
+                      distance=distanceFinder, threshold=threshold, verifiedStatus=verifiedStatus)
 
         # Sort db outliers
         db_outlier_indexes.sort(reverse=True, key=lambda x: edge_knn[x])
-
+        print(db_outlier_indexes[:n])
 
 
 if __name__ == '__main__':
