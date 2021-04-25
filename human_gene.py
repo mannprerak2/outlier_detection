@@ -1,13 +1,13 @@
-import algo
+import outlier_detector as algo
 import Levenshtein
 
 
-def readHumanGeneData():
+def readData():
     '''
     Reads the gene sequences from the file
     and stores as a dictionary
     '''
-    f = open('data/human_gene.data', "r")
+    f = open('data/human_gene/human_gene.data', "r")
     data = {}
     label = ''
     genes = ''
@@ -35,7 +35,7 @@ def levenshteinDistance(d1, d2):
 
 
 def main():
-    mp = readHumanGeneData()
+    mp = readData()
     labels = list(mp.keys())
     data = list(mp.values())
 
@@ -52,8 +52,12 @@ def main():
 
     print('Outlier Labels:', [labels[x] for x in result.outlier_indexes])
     print('Outlier Indexes:', result.outlier_indexes)
-    print('Verified:',sum(result.verifiedStatus),'out of',len(result.verifiedStatus))
-    print('Calculations:',result.calculations,'out of',(len(data)**2//2), 'i.e (N*N)/2')
+    print('Verified:', sum(result.verifiedStatus),
+          'out of', len(result.verifiedStatus))
+    print('Calculations:', result.calculations,
+          'out of', (len(data)**2//2), 'i.e (N*N)/2')
     print('Running Time: {:.2f} seconds'.format(result.runningTime))
+
+
 if __name__ == '__main__':
     main()
