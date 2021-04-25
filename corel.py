@@ -14,8 +14,8 @@ def readData():
         line = f.readline()
         if not line:
             break
-        if count > 2000:
-            break
+        # if count > 10000:
+        #     break
         line = line.split(' ')
         data[line[0]] = np.array(list(map(float, line[1:])))
     f.close()
