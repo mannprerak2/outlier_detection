@@ -1,6 +1,6 @@
-import outlier_detector as algo
+import dhca_outlier_detector as algo
 import Levenshtein
-
+from math import comb
 
 def readData():
     '''
@@ -15,7 +15,6 @@ def readData():
     if f.mode == 'r':
         fl = f.readlines()
         for x in fl:
-            # print(x)
             if x[0] == '>':
                 count = count + 1
                 if label != '':
@@ -39,6 +38,7 @@ def main():
     labels = list(mp.keys())
     data = list(mp.values())
 
+    print('Running dhca outlier detector:')
     runner = algo.Runner(
         kNN=3,
         k=3,
@@ -49,15 +49,14 @@ def main():
     )
 
     result = runner.run()
-
     print('Outlier Labels:', [labels[x] for x in result.outlier_indexes])
     print('Outlier Indexes:', result.outlier_indexes)
+    print('Outlier Scores', [result.edge_knn[x] for x in result.outlier_indexes])
     print('Verified:', sum(result.verifiedStatus),
           'out of', len(result.verifiedStatus))
     print('Calculations:', result.calculations,
-          'out of', (len(data)**2//2), 'i.e (N*N)/2')
+          'out of', comb(len(data),2))
     print('Running Time: {:.2f} seconds'.format(result.runningTime))
-
 
 if __name__ == '__main__':
     main()

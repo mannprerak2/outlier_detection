@@ -1,4 +1,4 @@
-import outlier_detector as algo
+import dhca_outlier_detector as algo
 import numpy as np
 
 def readData():
@@ -42,9 +42,10 @@ def main():
 
     result = runner.run()
 
-    result.outlier_indexes.sort()
+    # result.outlier_indexes.sort()
     print('Outlier Labels:', [labels[x] for x in result.outlier_indexes])
     print('Outlier Indexes:', result.outlier_indexes)
+    print('Outlier Scores', [result.edge_knn[x] for x in result.outlier_indexes])
     print('Verified:', sum(result.verifiedStatus),
           'out of', len(result.verifiedStatus))
     print('Calculations:', result.calculations,

@@ -3,6 +3,7 @@ from statistics import mean, stdev
 from typing import Callable
 from time import time
 
+
 class DistanceHandler:
     '''
     Handles Distance calculations including caching.
@@ -39,29 +40,41 @@ class KNNValues:
     '''
     Stores the k nearest neighbours of a data item.
     kNN: Number of k nearest neigbours
-    distances: sorted (ascending) distances to k nearest neighbours.
+    invertedDistanceMap: map of key-> item and value-> distance.
     '''
 
-    def __init__(self, kNN, distances):
+    def __init__(self, kNN, distanceMap: dict):
         self.kNN = kNN
         self.__average = None
-        self.distances = distances
-        self.distances.sort()
+        self.points = set(distanceMap.keys())
+        self.distances = list(distanceMap.items())
+        self.__sortDistances()
+
+    def __sortDistances(self):
+        self.distances.sort(key=lambda x: x[1])
 
     def getMax(self):
-        return self.distances[-1]
+        return self.distances[-1][1]
 
-    def setMax(self, value):
+    def isNotKnn(self, i):
+        return i not in self.points
+
+    def setMax(self, value, i):
         '''
         Sets the max value to [value] and sorts [distances].
         '''
-        self.distances[-1] = value
+
+        # Update max.
+        self.points.remove(self.distances[-1][0])
+        self.points.add(i)
+        self.distances[-1] = (i, value)
+
         self.__average = None
-        self.distances.sort()
+        self.__sortDistances()
 
     def average(self):
         if self.__average is None:
-            self.__average = mean(self.distances)
+            self.__average = tuple(map(mean, zip(*self.distances)))[1]
         return self.__average
 
 
@@ -82,12 +95,12 @@ class Node:
 
     def __update_dist_and_edge_knn(self, i, j, distance, dist_knn, edge_knn):
         # For i.
-        if dist_knn[i].getMax() > distance.distance(i, j):
-            dist_knn[i].setMax(distance.distance(i, j))
+        if dist_knn[i].isNotKnn(j) and dist_knn[i].getMax() > distance.distance(i, j):
+            dist_knn[i].setMax(distance.distance(i, j), j)
             edge_knn[i] = dist_knn[i].average()
         # For j.
-        if dist_knn[j].getMax() > distance.distance(i, j):
-            dist_knn[j].setMax(distance.distance(i, j))
+        if dist_knn[j].isNotKnn(i) and dist_knn[j].getMax() > distance.distance(i, j):
+            dist_knn[j].setMax(distance.distance(i, j), i)
             edge_knn[j] = dist_knn[j].average()
 
     def DHCA(self, dist_knn, edge_knn, kNN, nodeArray,
@@ -113,15 +126,15 @@ class Node:
             self.centroidSeeds = random.sample(
                 population=self.sampleNumbers, k=k)
 
-        # Generate k new nodes and map them with the index.
+        # Generate new nodes from centroidSeeds.
         nodeMap = {}
         for center in self.centroidSeeds:
-            nodeMap[center] = Node([center])
+            nodeMap[center] = Node(sampleIndexes=[center])
 
         for i in self.sampleNumbers:
+            # Only loop over nodes that are not center.
             if i in self.centroidSeeds:
                 continue
-            # Loop over nodes that are not center.
 
             # Get nearest center.
             j = distance.closest(i, self.centroidSeeds)
@@ -133,15 +146,15 @@ class Node:
                 nodeMap[j].addSample(i)
 
         if self.verifyCenters:
-            for c1 in range(0, len(self.centroidSeeds)):
-                # Skip this if center is already verified.
-                if verifiedStatus[self.centroidSeeds[c1]]:
+            for i in self.centroidSeeds:
+                if verifiedStatus[i]:
                     continue
-                for c2 in range(c1+1, len(self.centroidSeeds)):
+                for j in self.sampleNumbers:
+                    if i == j:
+                        continue
                     self.__update_dist_and_edge_knn(
-                        self.centroidSeeds[c1], self.centroidSeeds[c2],
-                        distance=distance, dist_knn=dist_knn, edge_knn=edge_knn)
-                verifiedStatus[self.centroidSeeds[c1]] = True
+                        i, j, distance=distance, dist_knn=dist_knn, edge_knn=edge_knn)
+                verifiedStatus[i] = True
 
         for v in nodeMap.values():
             if len(v.sampleNumbers) > maxClusterSize:
@@ -153,11 +166,12 @@ class Result:
     Holds generated result returned by [Runner.run()]
     '''
 
-    def __init__(self, outlier_indexes, verifiedStatus, calculations, runningTime):
+    def __init__(self, outlier_indexes, verifiedStatus, calculations, runningTime, edge_knn):
         self.outlier_indexes = outlier_indexes
         self.verifiedStatus = verifiedStatus
         self.calculations = calculations
         self.runningTime = runningTime
+        self.edge_knn = edge_knn
 
 
 class Runner:
@@ -179,12 +193,6 @@ class Runner:
         self.data = data
         self.distanceHandler = DistanceHandler(data, calculateDistance)
 
-        '''
-        - dist_knn: sorted distances of kNN for each data item.
-        - edge_knn: db outlier scores
-        - db_outlier_indexes: sorted (reverse) sample indexes on key=edge_knn
-        '''
-
     def __sortOutliersDesc(self):
         self.db_outlier_indexes.sort(
             reverse=True, key=lambda x: self.edge_knn[x])
@@ -196,32 +204,39 @@ class Runner:
         startTime = time()
         size = len(self.data)
         sampleIndexes = list(range(0, size))
+        '''
+        - dist_knn: sorted distances of kNN for each data item.
+        - edge_knn: db outlier scores
+        - db_outlier_indexes: sorted (reverse) sample indexes on key=edge_knn
+        '''
         self.dist_knn = [0]*size
         self.edge_knn = [0]*size
-        self.db_outlier_indexes = []
+        self.db_outlier_indexes = list(range(0, size))
 
         # Array of verification status of all data items. True if verified.
         self.verifiedStatus = [False]*size
 
         # Fill sequential dist_knn values for initial upper bound.
         for i in range(0, size):
-            distances = [0]*self.kNN
+            distanceMap = {}
             for j in range(0, self.kNN):
-                distances[j] = self.distanceHandler.distance(i, (i+j+1) % size)
-            self.dist_knn[i] = KNNValues(self.kNN, distances)
+                knnitem = (i+j+1) % size
+                distanceMap[knnitem] = self.distanceHandler.distance(
+                    i, knnitem)
+            self.dist_knn[i] = KNNValues(self.kNN, distanceMap)
 
         # Set initial edge_knn (db outlier score).
         for i in range(0, size):
             self.edge_knn[i] = self.dist_knn[i].average()
 
-        # Sorted (desc) list of indexes.
-        self.db_outlier_indexes = list(range(0, size))
+        # Sorted outlier indexes.
         self.__sortOutliersDesc()
 
         while not self.areTopNVerified():
             # Use top K unverified as first level cluster centers.
+            topKUnverified = self.getTopKUnverified()
             nodeArray = [Node(sampleIndexes=sampleIndexes,
-                              centroidSeeds=self.getTopKUnverified(), verifyCenters=True)]
+                              centroidSeeds=topKUnverified, verifyCenters=True)]
 
             threshold = self.getThreshold()
 
@@ -237,7 +252,8 @@ class Runner:
             outlier_indexes=self.db_outlier_indexes[:self.n],
             verifiedStatus=self.verifiedStatus,
             calculations=len(self.distanceHandler.cache),
-            runningTime=time()-startTime
+            runningTime=time()-startTime,
+            edge_knn=self.edge_knn
         )
 
     def getThreshold(self):
