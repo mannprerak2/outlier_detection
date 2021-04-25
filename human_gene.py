@@ -50,9 +50,10 @@ def main():
 
     result = runner.run()
 
-    print('Outlier Indexes:', result.outlier_indexes)
     print('Outlier Labels:', [labels[x] for x in result.outlier_indexes])
+    print('Outlier Indexes:', result.outlier_indexes)
     print('Verified:',sum(result.verifiedStatus),'out of',len(result.verifiedStatus))
-
+    print('Calculations:',result.calculations,'out of',(len(data)**2//2), 'i.e (N*N)/2')
+    print('Running Time: {:.2f} seconds'.format(result.runningTime))
 if __name__ == '__main__':
     main()

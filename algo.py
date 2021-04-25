@@ -1,7 +1,7 @@
 import random
 from statistics import mean, stdev
 from typing import Callable
-
+from time import time
 
 class DistanceHandler:
     '''
@@ -154,9 +154,11 @@ class Result:
     - outlier_indexes
     '''
 
-    def __init__(self, outlier_indexes, verifiedStatus):
+    def __init__(self, outlier_indexes, verifiedStatus, calculations, runningTime):
         self.outlier_indexes = outlier_indexes
         self.verifiedStatus = verifiedStatus
+        self.calculations = calculations
+        self.runningTime = runningTime
 
 
 class Runner:
@@ -192,6 +194,7 @@ class Runner:
         '''
         Run the algorighm and return [Result].
         '''
+        startTime = time()
         size = len(self.data)
         sampleIndexes = list(range(0, size))
         self.dist_knn = [0]*size
@@ -233,7 +236,9 @@ class Runner:
 
         return Result(
             outlier_indexes=self.db_outlier_indexes[:self.n],
-            verifiedStatus=self.verifiedStatus
+            verifiedStatus=self.verifiedStatus,
+            calculations=len(self.distanceHandler.cache),
+            runningTime=time()-startTime
         )
 
     def getThreshold(self):
