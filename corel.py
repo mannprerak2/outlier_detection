@@ -38,10 +38,10 @@ def main():
     n = 50
     kValues = [2, 3, 5, 8, 10, 15, 20, 50]
 
-    fileName = 'gen/corel_k_to_time.jsonl'
+    fileName = 'out/corel_k_to_time.jsonl'
     count = 2
     while os.path.exists(fileName):
-        fileName = 'gen/corel_k_to_time_{}.jsonl'.format(count)
+        fileName = 'out/corel_k_to_time_{}.jsonl'.format(count)
         count += 1
     print('Output File Path:', fileName)
     for k in kValues:
