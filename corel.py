@@ -1,6 +1,7 @@
 import dhca_outlier_detector as algo
 import numpy as np
 from math import comb
+import os
 
 
 def readData():
@@ -33,19 +34,31 @@ def main():
     labels = list(mp.keys())
     data = list(mp.values())
 
-    runner = algo.Runner(
-        kNN=20,
-        k=5,
-        n=10,
-        maxClusterSize=50,
-        data=data,
-        calculateDistance=euclideanDistance
-    )
+    kNN = 30
+    n = 50
+    kValues = [2, 3, 5, 8, 10, 15, 20, 50]
 
-    result = runner.run()
+    fileName = 'gen/corel_k_to_time.jsonl'
+    count = 2
+    while os.path.exists(fileName):
+        fileName = 'gen/corel_k_to_time_{}.jsonl'.format(count)
+        count += 1
+    print('Output File Path:', fileName)
+    for k in kValues:
+        print('Running for k:', k)
+        runner = algo.Runner(
+            kNN=kNN,
+            k=k,
+            n=n,
+            maxClusterSize=50,
+            data=data,
+            calculateDistance=euclideanDistance
+        )
 
-    print('Outlier Labels:', [labels[x] for x in result.outlier_indexes])
-    print(result.toJSON())
+        result = runner.run()
+        with open(fileName, 'a+') as f:
+            f.write(result.toJSON())
+            f.write('\n')
 
 
 if __name__ == '__main__':
