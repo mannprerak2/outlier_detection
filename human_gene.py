@@ -2,6 +2,7 @@ import dhca_outlier_detector as algo
 import Levenshtein
 from math import comb
 
+
 def readData():
     '''
     Reads the gene sequences from the file
@@ -50,13 +51,8 @@ def main():
 
     result = runner.run()
     print('Outlier Labels:', [labels[x] for x in result.outlier_indexes])
-    print('Outlier Indexes:', result.outlier_indexes)
-    print('Outlier Scores', [result.edge_knn[x] for x in result.outlier_indexes])
-    print('Verified:', sum(result.verifiedStatus),
-          'out of', len(result.verifiedStatus))
-    print('Calculations:', result.calculations,
-          'out of', comb(len(data),2))
-    print('Running Time: {:.2f} seconds'.format(result.runningTime))
+    print(result.toJSON())
+
 
 if __name__ == '__main__':
     main()

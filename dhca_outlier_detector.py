@@ -2,6 +2,8 @@ import random
 from statistics import mean, stdev
 from typing import Callable
 from time import time
+from math import comb
+import json
 
 
 class DistanceHandler:
@@ -166,12 +168,27 @@ class Result:
     Holds generated result returned by [Runner.run()]
     '''
 
-    def __init__(self, outlier_indexes, verifiedStatus, calculations, runningTime, edge_knn):
+    def __init__(self, outlier_indexes, outlier_scores, verifiedCount,
+                 calculations, runningTime,
+                 n, k, kNN, maxClusterSize, dataSize):
         self.outlier_indexes = outlier_indexes
-        self.verifiedStatus = verifiedStatus
+        self.outlier_scores = outlier_scores
+        self.verifiedCount = verifiedCount
         self.calculations = calculations
         self.runningTime = runningTime
-        self.edge_knn = edge_knn
+        self.n = n
+        self.k = k
+        self.kNN = kNN
+        self.maxClusterSize = maxClusterSize
+        self.dataSize = dataSize
+
+        self.verifiedPercentage = '({:.2f}%)'.format(
+            100*self.verifiedCount/self.dataSize)
+        self.calculationPercentage = '({:.2f}%)'.format(
+            100*self.calculations/comb(self.dataSize, 2))
+
+    def toJSON(self, indent=None):
+        return json.dumps(self.__dict__, indent=indent)
 
 
 class Runner:
@@ -250,10 +267,16 @@ class Runner:
 
         return Result(
             outlier_indexes=self.db_outlier_indexes[:self.n],
-            verifiedStatus=self.verifiedStatus,
+            outlier_scores=[self.edge_knn[x]
+                            for x in self.db_outlier_indexes[:self.n]],
+            verifiedCount=sum(self.verifiedStatus),
             calculations=len(self.distanceHandler.cache),
             runningTime=time()-startTime,
-            edge_knn=self.edge_knn
+            n=self.n,
+            k=self.k,
+            kNN=self.kNN,
+            maxClusterSize=self.maxClusterSize,
+            dataSize=size
         )
 
     def getThreshold(self):
