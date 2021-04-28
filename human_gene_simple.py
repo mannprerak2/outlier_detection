@@ -1,4 +1,4 @@
-import outlier_detector
+import outlier_detector.simple_knn
 from math import comb
 
 # Reuse functions from human_gene.
@@ -21,7 +21,6 @@ def main():
 
     print('Outlier Labels:', [labels[x] for x in result.outlier_indexes])
     print('Outlier Indexes:', result.outlier_indexes)
-    print('Outlier Scores', [result.edge_knn[x] for x in result.outlier_indexes])
     print('Calculations:', result.calculations,
           'out of', comb(len(data),2))
     print('Running Time: {:.2f} seconds'.format(result.runningTime))
