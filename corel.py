@@ -1,4 +1,4 @@
-import dhca_outlier_detector as algo
+import outlier_detector.dhca
 import numpy as np
 from math import comb
 import os
@@ -46,7 +46,7 @@ def main():
     print('Output File Path:', fileName)
     for k in kValues:
         print('Running for k:', k)
-        runner = algo.Runner(
+        runner = outlier_detector.dhca.Runner(
             kNN=kNN,
             k=k,
             n=n,

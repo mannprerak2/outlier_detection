@@ -1,5 +1,4 @@
-import dhca_outlier_detector as algo
-import simple_outlier_detector as simpleOD
+import outlier_detector
 from math import comb
 
 # Reuse functions from human_gene.
@@ -11,7 +10,7 @@ def main():
     data = list(mp.values())
 
     print('Running simple outlier detector:')
-    runner = simpleOD.Runner(
+    runner = outlier_detector.simple_knn.Runner(
         kNN=3,
         n=3,
         data=data,

@@ -1,4 +1,4 @@
-import dhca_outlier_detector as algo
+import outlier_detector.dhca
 import Levenshtein
 from math import comb
 
@@ -40,7 +40,7 @@ def main():
     data = list(mp.values())
 
     print('Running dhca outlier detector:')
-    runner = algo.Runner(
+    runner = outlier_detector.dhca.Runner(
         kNN=3,
         k=3,
         n=3,

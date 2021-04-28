@@ -4,7 +4,7 @@ from typing import Callable
 from time import time
 
 # Reuse these classes from dhca detector
-from dhca_outlier_detector import DistanceHandler, KNNValues
+from outlier_detector.dhca import DistanceHandler, KNNValues
 
 class Result:
     '''
