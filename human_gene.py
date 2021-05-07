@@ -39,11 +39,16 @@ def main():
     labels = list(mp.keys())
     data = list(mp.values())
 
+    fileName = 'out/human_gene.jsonl'
+    kNN = 30
+    n = 50
+    k = 3
+
     print('Running dhca outlier detector:')
     runner = outlier_detector.dhca.Runner(
-        kNN=3,
-        k=3,
-        n=3,
+        kNN=kNN,
+        k=k,
+        n=n,
         maxClusterSize=3,
         data=data,
         calculateDistance=levenshteinDistance
@@ -52,6 +57,9 @@ def main():
     result = runner.run()
     print('Outlier Labels:', [labels[x] for x in result.outlier_indexes])
     print(result.toJSON())
+    with open(fileName, 'a+') as f:
+        f.write(result.toJSON())
+        f.write('\n')
 
 
 if __name__ == '__main__':
